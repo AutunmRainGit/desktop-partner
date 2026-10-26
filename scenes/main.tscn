@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://ba6i08se35ipp"]
+
+[ext_resource type="Script" uid="uid://7qiu1ipkf1up" path="res://scripts/presentation/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://culdjnb7ob1i8" path="res://scripts/presentation/pet_controller.gd" id="2_pet"]
+[ext_resource type="Script" uid="uid://fvnnxkak72rk" path="res://scripts/presentation/interaction_controller.gd" id="3_interaction"]
+[ext_resource type="Script" uid="uid://cs3oun2dqbc6e" path="res://scripts/presentation/animation_controller.gd" id="4_animation"]
+[ext_resource type="Script" uid="uid://b33pwv2y5a36i" path="res://scripts/presentation/window_controller.gd" id="5_window"]
+
+[node name="Main" type="Node" unique_id=1606036694]
+script = ExtResource("1_main")
+
+[node name="PetController" type="Node2D" parent="." unique_id=1814807874]
+script = ExtResource("2_pet")
+
+[node name="CharacterSprite" type="AnimatedSprite2D" parent="PetController" unique_id=294143167]
+scale = Vector2(0.5, 0.5)
+position = Vector2(0, -45)
+
+[node name="StatusDisplay" type="Node2D" parent="PetController" unique_id=1797465855]
+
+[node name="LevelLabel" type="Label" parent="PetController/StatusDisplay" unique_id=1840164557]
+offset_left = -120.0
+offset_top = 28.0
+offset_right = 120.0
+offset_bottom = 44.0
+horizontal_alignment = 1
+
+[node name="SatietyLabel" type="Label" parent="PetController/StatusDisplay" unique_id=1171510189]
+offset_left = -120.0
+offset_top = 46.0
+offset_right = 120.0
+offset_bottom = 62.0
+horizontal_alignment = 1
+
+[node name="HealthLabel" type="Label" parent="PetController/StatusDisplay" unique_id=1773957980]
+offset_left = -120.0
+offset_top = 64.0
+offset_right = 120.0
+offset_bottom = 80.0
+horizontal_alignment = 1
+
+[node name="StateLabel" type="Label" parent="PetController/StatusDisplay" unique_id=1388325105]
+offset_left = -120.0
+offset_top = 82.0
+offset_right = 120.0
+offset_bottom = 98.0
+horizontal_alignment = 1
+
+[node name="Tooltip" type="Label" parent="PetController" unique_id=205010082]
+visible = false
+offset_left = -140.0
+offset_top = 106.0
+offset_right = 140.0
+offset_bottom = 122.0
+horizontal_alignment = 1
+
+[node name="Feedback" type="Label" parent="PetController" unique_id=113548629]
+visible = false
+offset_left = -140.0
+offset_top = 126.0
+offset_right = 140.0
+offset_bottom = 142.0
+horizontal_alignment = 1
+
+[node name="InteractionController" type="Node" parent="." unique_id=1004203410]
+script = ExtResource("3_interaction")
+
+[node name="AnimationController" type="Node" parent="." unique_id=166513794]
+script = ExtResource("4_animation")
+
+[node name="WindowController" type="Node" parent="." unique_id=796289953]
+script = ExtResource("5_window")

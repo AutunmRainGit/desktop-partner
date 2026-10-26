@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --version)",
+      "Read(//Users/atr/**)",
+      "Read(//Users/atr/.claude/**)",
+      "Bash(curl -s -i -m 5 http://localhost:9080/mcp)",
+      "Bash(claude mcp *)",
+      "Bash(python3 *)",
+      "Bash(curl *)",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git check-ignore *)"
+    ]
+  }
+}
