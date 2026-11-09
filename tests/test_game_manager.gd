@@ -35,6 +35,7 @@ func _init() -> void:
 	_test_wake_only_feed()
 	_test_wake_only_click()
 	_test_sleep_expired()
+	_test_new_character_night_sleep()
 
 	print("")
 	print("RESULT: %d passed, %d failed" % [_passed, _failed])
@@ -242,6 +243,16 @@ func _test_sleep_expired() -> void:
 	_check(r == GameManager.ActionResult.DONE, "睡眠过期后喂食正常执行")
 	_check(e.gm.get_state().satiety == 78, "推进 1 小时睡眠(扣2)后喂食 +30 = 78")
 	_check(e.gm.get_state().sleep_type == PetState.SleepType.AWAKE, "已清醒")
+
+
+## 18. 新建角色在夜间应自动入睡（初始化即同步睡眠状态）
+func _test_new_character_night_sleep() -> void:
+	print("[gm18] 夜间新建自动入睡")
+	var e := _make_env("night_new")
+	var r := e.gm.initialize(_ts(2026, 10, 19, 23, 30))
+	_check(r.ok and r.is_new, "夜间新建成功")
+	_check(e.gm.get_state().sleep_type == PetState.SleepType.AUTO_SLEEP, "夜间新建即为自动睡眠")
+	_check(e.gm.get_state().scheduled_wake_timestamp == _ts(2026, 10, 20, 7, 0), "计划次日 07:00 苏醒")
 
 
 # --- 工具 ---

@@ -28,7 +28,7 @@ func _test_defaults() -> void:
 	_check(c.sleep_consumption == 2, "sleep_consumption == 2")
 	_check(c.bread_restore == 30, "bread_restore == 30")
 	_check(c.leaf_restore == 10, "leaf_restore == 10")
-	_check(c.max_level == 2, "max_level == 2")
+	_check(c.max_level == 10, "max_level == 10")
 	_check(c.level_up_exp == 2, "level_up_exp == 2")
 	_check(c.forage_unlock_level == 2, "forage_unlock_level == 2")
 	_check(c.forage_threshold == 10, "forage_threshold == 10")
@@ -60,7 +60,7 @@ func _test_validate() -> void:
 	_expect_error("max_level", 0, "max_level < 1")
 	_expect_error("level_up_exp", 0, "level_up_exp <= 0")
 	_expect_error("forage_unlock_level", 0, "forage_unlock_level < 1")
-	_expect_error("forage_unlock_level", 5, "forage_unlock_level > max_level")
+	_expect_error("forage_unlock_level", 11, "forage_unlock_level > max_level")
 	_expect_error("forage_threshold", 200, "forage_threshold > max_satiety")
 
 
@@ -82,7 +82,7 @@ func _test_independence() -> void:
 	var c := CharacterConfig.new()
 	_check(c != null, "可直接实例化，无需 PetState/场景/其它系统")
 	_check(c is Resource, "继承自 Resource")
-	_check(c.max_level == 2, "实例化后具备默认配置")
+	_check(c.max_level == 10, "实例化后具备默认配置")
 
 
 ## 辅助：校验错误数组中是否包含指定字段名

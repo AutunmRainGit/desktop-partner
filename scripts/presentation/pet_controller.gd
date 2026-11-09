@@ -26,7 +26,7 @@ func refresh(state: PetState, config: CharacterConfig) -> void:
 		_health_label.text = "生命值: -/-"
 		_state_label.text = "未知"
 		return
-	_level_label.text = "等级: %d" % state.level
+	_level_label.text = growth_text(state, config)
 	_satiety_label.text = "饱食度: %d/%d" % [state.satiety, config.max_satiety]
 	_health_label.text = "生命值: %d/%d" % [state.health, config.max_health]
 	_state_label.text = state_text(state)
@@ -36,6 +36,14 @@ func refresh(state: PetState, config: CharacterConfig) -> void:
 func set_sprite_frames(frames: SpriteFrames) -> void:
 	if _sprite != null:
 		_sprite.sprite_frames = frames
+
+
+## 展示层仅格式化；经验阈值与满级判断交给成长系统。
+static func growth_text(state: PetState, config: CharacterConfig) -> String:
+	var growth := GrowthSystem.new(state, config)
+	if growth.is_max_level():
+		return "Lv.%d MAX" % state.level
+	return "Lv.%d EXP %d/%d" % [state.level, state.experience, growth.required_exp(state.level)]
 
 
 func get_sprite() -> AnimatedSprite2D:

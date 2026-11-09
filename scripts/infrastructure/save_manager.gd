@@ -180,7 +180,7 @@ func _state_to_dict(state: PetState) -> Dictionary:
 ## 校验并构建 PetState；任一字段不合法返回 null（不做半恢复）。
 ## 结构校验：类型、下限、枚举/余数范围、日期格式、时间戳 >= 0。
 ## 业务上限校验：仅在 config 非空时执行（health/satiety/level 上限）。
-## 说明：experience 仅校验 >= 0——领域模型中满级后经验可无限累计、升级时归零，无干净上限。
+## experience 仅校验 >= 0，以接收旧档存量经验；新曲线折算由 GrowthSystem 在初始化时统一完成。
 func _dict_to_state(dict, config) -> PetState:
 	if typeof(dict) != TYPE_DICTIONARY:
 		return null
@@ -189,6 +189,8 @@ func _dict_to_state(dict, config) -> PetState:
 	if not _has_int(dict, "satiety") or int(dict["satiety"]) < 0:
 		return null
 	if not _has_bool(dict, "is_dead"):
+		return null
+	if bool(dict["is_dead"]) != (int(dict["health"]) == 0):
 		return null
 	if not _has_int(dict, "level") or int(dict["level"]) < 1:
 		return null

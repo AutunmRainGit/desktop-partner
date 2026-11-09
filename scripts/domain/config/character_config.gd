@@ -39,9 +39,9 @@ extends Resource
 # --- 成长配置 ---
 
 ## 角色最高等级
-@export_range(1, 9999) var max_level: int = 2
+@export_range(1, 9999) var max_level: int = 10
 
-## 从 1 级提升至 2 级需要的经验值
+## 每级经验系数；所需经验 = 当前等级 × 此值（默认 2）。
 @export_range(1, 9999) var level_up_exp: int = 2
 
 

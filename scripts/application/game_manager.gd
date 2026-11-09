@@ -89,9 +89,17 @@ func initialize(now_timestamp: int) -> InitResult:
 
 	# 构建全部领域服务（共享同一 PetState 与配置）
 	_build_services()
+	# 存档结构未变：保留原等级，以新曲线折算存量经验，再保存规范化结果。
+	_growth.normalize_experience()
 
 	# 离线结算（新角色 now==last 结算 0 秒；恢复角色结算 [last, now]）
 	_time.settle(now_timestamp, false)
+
+	# 新角色 now==last 使 settle 提前返回、未同步睡眠状态——这里补一次同步（如夜间新建应自动入睡）
+	if result.is_new and not _state.is_dead:
+		_sleep.update_sleep_state(now_timestamp)
+		if not _sleep.is_sleeping():
+			_sleep.start_auto_sleep(now_timestamp)
 
 	# 保存结算后状态，避免下次启动重复结算
 	var save_err := _save.save(_state)

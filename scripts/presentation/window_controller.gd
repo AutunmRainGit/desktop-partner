@@ -10,6 +10,9 @@ signal hover_changed(over: bool)  ## 鼠标进入/离开宠物区域
 
 
 const DEFAULT_SIZE := Vector2i(300, 300)
+const SCREEN_SIZE_RATIO := 0.30  ## 窗口边长占屏幕可用区域短边的比例
+const MIN_SIZE := 480
+const MAX_SIZE := 720
 const DRAG_THRESHOLD_PX := 4.0
 const DEBUG_INPUT := true  ## 诊断日志开关：定位交互问题后可置 false
 const DEBUG_DISABLE_ALWAYS_ON_TOP := true  ## 调试：临时关闭置顶，排查 macOS 拖动不生效
@@ -37,7 +40,15 @@ func apply_desktop_settings() -> void:
 	window.borderless = true
 	window.always_on_top = not DEBUG_DISABLE_ALWAYS_ON_TOP
 	window.transparent_bg = not DEBUG_DISABLE_TRANSPARENT
-	window.size = DEFAULT_SIZE
+	var usable_rect := DisplayServer.screen_get_usable_rect(window.current_screen)
+	var short_side := mini(usable_rect.size.x, usable_rect.size.y)
+	if short_side > 0:
+		var side := mini(clampi(roundi(short_side * SCREEN_SIZE_RATIO), MIN_SIZE, MAX_SIZE), floori(short_side * 0.9))
+		window.size = Vector2i(side, side)
+		# 放大后保持整个窗口位于可用桌面内。
+		window.position = window.position.clamp(usable_rect.position, usable_rect.end - window.size)
+	else:
+		window.size = Vector2i(MIN_SIZE, MIN_SIZE)
 	window.grab_focus()  # 无边框窗口默认可能不获得键盘焦点，主动请求（否则 F/S/W 无效）
 
 

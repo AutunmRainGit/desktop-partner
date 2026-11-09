@@ -38,9 +38,9 @@ func _init() -> void:
 	var r5 := g5.gain_daily_experience("2026-10-20")
 	_check(r5 == GrowthSystem.GainResult.LEVELED_UP and s5.level == 2 and s5.experience == 0, "经验达标升级且经验清零")
 
-	# 6. 达到最高等级后仍可继续获取经验（但不升级）
+	# 6. 二级不再是最高等级，可继续向三级成长
 	var r6 := g5.gain_daily_experience("2026-10-21")
-	_check(r6 == GrowthSystem.GainResult.GAINED and s5.level == 2 and s5.experience == 1, "最高等级仍可获取经验且不升级")
+	_check(r6 == GrowthSystem.GainResult.GAINED and s5.level == 2 and s5.experience == 1, "二级继续积累经验")
 
 	# 7. 死亡后禁止获得经验
 	var s7 := PetState.new()
@@ -75,9 +75,45 @@ func _init() -> void:
 	_check(sd.experience == 0 and sd.last_exp_date == "", "非法日期不改变状态")
 	_check(gd.gain_daily_experience("2024-02-29") == GrowthSystem.GainResult.GAINED, "闰年2月29日合法可获得经验")
 
+	_test_new_curve()
 	print("")
 	print("RESULT: %d passed, %d failed" % [_passed, _failed])
 	quit(0 if _failed == 0 else 1)
+
+
+func _test_new_curve() -> void:
+	var s := PetState.new()
+	var g := GrowthSystem.new(s, CharacterConfig.new())
+	for level in range(1, 10):
+		_check(g.required_exp(level) == level * 2, "Lv.%d 经验阈值" % level)
+	_check(g.required_exp(10) == 0, "满级没有下一等级阈值")
+	# 每天仅获得一点，从一级到十级共90点；逐个验证所有等级的边界。
+	var day := 0
+	for level in range(1, 10):
+		for point in range(level * 2):
+			var date := TimeUtils.local_date_str(1800000000 + day * 86400)
+			day += 1
+			var result := g.gain_daily_experience(date)
+			if point == level * 2 - 1:
+				_check(result == GrowthSystem.GainResult.LEVELED_UP and s.level == level + 1 and s.experience == 0, "Lv.%d 升级边界" % level)
+			else:
+				_check(result == GrowthSystem.GainResult.GAINED and s.level == level and s.experience == point + 1, "Lv.%d 经验进度%d" % [level, point + 1])
+	var last_date := s.last_exp_date
+	_check(day == 90 and s.level == 10, "90天每日经验达到十级")
+	_check(g.gain_daily_experience("2030-01-01") == GrowthSystem.GainResult.REJECTED and s.experience == 0 and s.last_exp_date == last_date, "满级停止经验与日期变更")
+	_check(g.can_auto_forage(), "满级保留觅食能力")
+	# 一次奖励前已有溢出，连续扣除阈值而不是清零。
+	s.level = 2
+	s.experience = 12
+	s.last_exp_date = ""
+	_check(g.gain_daily_experience("2030-01-02") == GrowthSystem.GainResult.LEVELED_UP and s.level == 4 and s.experience == 3, "连续升级保留溢出经验")
+	s.level = 9
+	s.experience = 17
+	_check(g.gain_daily_experience("2030-01-03") == GrowthSystem.GainResult.LEVELED_UP and s.level == 10 and s.experience == 0, "最后一点经验到达MAX")
+	s.level = 2
+	s.experience = 1000000
+	_check(g.normalize_experience() == 8 and s.level == 10 and s.experience == 0, "大量存量经验折算到MAX并清除超出部分")
+	_check(g.normalize_experience() == 0, "规范化重复执行不升级")
 
 
 func _check(cond: bool, label: String) -> void:

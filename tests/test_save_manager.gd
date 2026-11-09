@@ -28,6 +28,7 @@ func _init() -> void:
 	_test_upper_bounds()
 	_test_version_distinction()
 	_test_no_path()
+	_test_dead_health_consistency()
 
 	print("")
 	print("RESULT: %d passed, %d failed" % [_passed, _failed])
@@ -233,6 +234,32 @@ func _test_no_path() -> void:
 	var sm := SaveManager.new("")
 	_check(sm.save(PetState.new()) == SaveManager.SaveError.NO_PATH, "save 返回 NO_PATH")
 	_check(sm.load().error == SaveManager.SaveError.NO_PATH, "load 返回 NO_PATH")
+
+
+## 17. 死亡标记与生命值一致性校验
+func _test_dead_health_consistency() -> void:
+	print("[save17] 死亡/生命一致性")
+	var d_ok := _full_dict()
+	d_ok["is_dead"] = true
+	d_ok["health"] = 0
+	d_ok["satiety"] = 0
+	_write_save("dead_ok", d_ok)
+	var r_ok := SaveManager.new(_path("dead_ok")).load()
+	_check(r_ok.ok, "死亡且生命为0 合法")
+
+	var d1 := _full_dict()
+	d1["is_dead"] = true
+	d1["health"] = 50
+	_write_save("dead_health", d1)
+	var r1 := SaveManager.new(_path("dead_health")).load()
+	_check(not r1.ok and r1.error == SaveManager.SaveError.INVALID_DATA, "死亡但生命>0 被拒绝")
+
+	var d2 := _full_dict()
+	d2["is_dead"] = false
+	d2["health"] = 0
+	_write_save("alive_zero_health", d2)
+	var r2 := SaveManager.new(_path("alive_zero_health")).load()
+	_check(not r2.ok and r2.error == SaveManager.SaveError.INVALID_DATA, "未死亡但生命为0 被拒绝")
 
 
 # --- 工具 ---

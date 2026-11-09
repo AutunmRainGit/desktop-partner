@@ -17,6 +17,7 @@ const DEBUG_ACTIONS := true  ## 诊断日志开关：定位交互问题后可置
 
 
 var _game: GameManager
+var _displayed_level := 0
 
 
 @onready var _pet: PetController = $PetController
@@ -28,6 +29,7 @@ var _game: GameManager
 func _ready() -> void:
 	_window.apply_desktop_settings()
 	_center_pet()
+	get_window().size_changed.connect(_center_pet)
 	_pet.set_sprite_frames(_load_frames())
 	_setup_game()
 	_wire_controllers()
@@ -97,12 +99,13 @@ func _on_pet_clicked() -> void:
 	var fb := _feedback_text(result)
 	if result == GameManager.ActionResult.REJECTED:
 		var st := _game.get_state()
-		if st != null and not st.is_dead and st.last_exp_date == TimeUtils.local_date_str(_now()):
-			fb = "今天已获得经验"
+		if st != null and not st.is_dead:
+			if _game.get_growth().is_max_level():
+				fb = "已达最高等级 MAX"
+			elif st.last_exp_date == TimeUtils.local_date_str(_now()):
+				fb = "今天已获得经验"
 	_show_feedback(fb)
 	match result:
-		GameManager.ActionResult.LEVELED_UP:
-			_animation.play_action(AnimationController.ANIM_LEVEL_UP)
 		GameManager.ActionResult.WOKE_UP:
 			_animation.play_action(AnimationController.ANIM_STOP_SLEEP)
 	_refresh()
@@ -162,6 +165,11 @@ func _refresh() -> void:
 	var state := _game.get_state()
 	_pet.refresh(state, _game.get_config())
 	_animation.set_state(state)
+	# 所有操作与定时结算都会刷新，统一捕获点击/觅食（含操作前结算）升级。
+	# 初始化首次刷新只展示折算结果，不重播历史升级。
+	if _displayed_level > 0 and state.level > _displayed_level:
+		_animation.play_action(AnimationController.ANIM_LEVEL_UP)
+	_displayed_level = state.level
 
 
 func _load_frames() -> SpriteFrames:
@@ -176,6 +184,9 @@ func _load_frames() -> SpriteFrames:
 func _center_pet() -> void:
 	if _pet != null and get_window() != null:
 		_pet.position = Vector2(get_window().size) / 2.0
+		# 角色、状态和反馈按原始 300×300 布局一起缩放。
+		_pet.scale = Vector2.ONE * (float(get_window().size.x) / WindowController.DEFAULT_SIZE.x)
+		_pet.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func _now() -> int:
