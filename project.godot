@@ -10,6 +10,8 @@ config_version=5
 
 [application]
 
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0, 0, 0, 0)
 config/name="desktop-Partner"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"

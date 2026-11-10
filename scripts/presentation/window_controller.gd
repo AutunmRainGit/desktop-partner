@@ -7,6 +7,7 @@ extends Node
 
 signal clicked                  ## 宠物被点击（按下与释放均在宠物上且未构成拖动）
 signal hover_changed(over: bool)  ## 鼠标进入/离开宠物区域
+signal context_menu_requested(screen_position: Vector2i)
 
 
 const DEFAULT_SIZE := Vector2i(300, 300)
@@ -83,7 +84,10 @@ func _sprite_size() -> Vector2:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed and not _potential_drag and not _dragging and is_over_pet():
+			context_menu_requested.emit(DisplayServer.mouse_get_position())
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if DEBUG_INPUT:
 			print("[Window] 左键 %s  over_pet=%s" % ["按下" if event.pressed else "释放", str(is_over_pet())])
 		if event.pressed:

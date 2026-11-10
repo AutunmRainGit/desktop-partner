@@ -10,6 +10,7 @@ const STATE_AWAKE := "awake"
 
 
 @onready var _sprite: AnimatedSprite2D = $CharacterSprite
+@onready var _status_bar: Node2D = $StatusDisplay
 @onready var _level_label: Label = $StatusDisplay/LevelLabel
 @onready var _satiety_label: Label = $StatusDisplay/SatietyLabel
 @onready var _health_label: Label = $StatusDisplay/HealthLabel
@@ -44,6 +45,14 @@ static func growth_text(state: PetState, config: CharacterConfig) -> String:
 	if growth.is_max_level():
 		return "Lv.%d MAX" % state.level
 	return "Lv.%d EXP %d/%d" % [state.level, state.experience, growth.required_exp(state.level)]
+
+
+func set_status_bar_visible(visible: bool) -> void:
+	_status_bar.visible = visible
+
+
+func is_status_bar_visible() -> bool:
+	return _status_bar.visible
 
 
 func get_sprite() -> AnimatedSprite2D:

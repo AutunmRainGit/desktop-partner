@@ -4,6 +4,10 @@ extends Node
 ## 并在玩家操作时播放对应的动作动画。不承担具体交互/动画/窗口细节。
 
 
+signal menu_state_changed(state: Dictionary)
+
+enum Action { FEED_BREAD, START_SLEEP, WAKE_UP, SET_STATUS_BAR_VISIBLE }
+
 const SAVE_PATH := "user://desktop_partner/save.json"
 const CONFIG_PATH := "res://resources/character_config.tres"
 const CHARACTER_FRAMES_PATH := "res://resources/animate/character_frames.tres"
@@ -18,6 +22,8 @@ const DEBUG_ACTIONS := true  ## 诊断日志开关：定位交互问题后可置
 
 var _game: GameManager
 var _displayed_level := 0
+var _last_menu_state: Dictionary = {}
+var _pet_menu: Node
 
 
 @onready var _pet: PetController = $PetController
@@ -64,11 +70,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			print("[Main] 收到按键: ", event.keycode)
 		match event.keycode:
 			KEY_FEED:
-				_do_feed()
+				dispatch_action(Action.FEED_BREAD)
 			KEY_SLEEP:
-				_do_sleep()
+				dispatch_action(Action.START_SLEEP)
 			KEY_WAKE:
-				_do_wake()
+				dispatch_action(Action.WAKE_UP)
 
 
 # --- 初始化 ---
@@ -87,6 +93,25 @@ func _wire_controllers() -> void:
 	_window.setup(_pet.get_sprite())
 	_window.clicked.connect(_on_pet_clicked)
 	_window.hover_changed.connect(_on_hover_changed)
+	_window.context_menu_requested.connect(_on_context_menu_requested)
+
+
+func _on_context_menu_requested(screen_position: Vector2i) -> void:
+	# 按需加载独立场景：主场景和快捷键不依赖 WebView 类。
+	if not is_instance_valid(_pet_menu):
+		var menu_script := load("res://scripts/presentation/pet_menu_controller.gd") as Script
+		if menu_script == null:
+			_show_feedback("菜单未能加载，仍可使用 F / S / W")
+			return
+		_pet_menu = menu_script.new()
+		add_child(_pet_menu)
+		_pet_menu.connect("menu_failed", _on_menu_failed)
+	_pet_menu.call("open_menu", self, screen_position)
+
+
+func _on_menu_failed(message: String) -> void:
+	push_warning("PetMenu: " + message)
+	_show_feedback("菜单暂不可用，仍可使用 F / S / W")
 
 
 # --- 交互（经 InteractionController，统一反馈 + 动画 + 刷新） ---
@@ -111,17 +136,80 @@ func _on_pet_clicked() -> void:
 	_refresh()
 
 
-func _do_feed() -> void:
+## 快捷键和菜单共用操作入口；显隐只改变表现，不推进时间或唤醒。
+func dispatch_action(action: int, params: Dictionary = {}) -> Dictionary:
+	if action == Action.SET_STATUS_BAR_VISIBLE:
+		if params.size() != 1 or not params.has("visible") or typeof(params.visible) != TYPE_BOOL or _pet == null:
+			return _action_result("rejected", "状态栏参数无效")
+		_pet.set_status_bar_visible(params.visible)
+		_publish_menu_state()
+		return _action_result("success", "已显示状态栏" if params.visible else "已隐藏状态栏")
+	if not params.is_empty():
+		return _action_result("rejected", "操作参数无效")
+	if _game == null or not _game.is_initialized():
+		return _action_result("rejected", "角色尚未初始化")
+	match action:
+		Action.FEED_BREAD:
+			return _do_feed()
+		Action.START_SLEEP:
+			return _do_sleep()
+		Action.WAKE_UP:
+			return _do_wake()
+	return _action_result("rejected", "未知操作")
+
+
+func get_menu_state() -> Dictionary:
+	var snapshot := {
+		"is_sleeping": false,
+		"status_bar_visible": _pet.is_status_bar_visible() if _pet != null else true,
+		"health": 0, "max_health": 0, "satiety": 0, "max_satiety": 0,
+		"level": 1, "experience": 0, "required_exp": 0,
+		"is_max_level": false, "is_dead": false,
+	}
+	if _game != null and _game.is_initialized():
+		var state := _game.get_state()
+		var config := _game.get_config()
+		snapshot.merge({
+			"is_sleeping": _game.get_sleep().is_sleeping(),
+			"health": state.health, "max_health": config.max_health,
+			"satiety": state.satiety, "max_satiety": config.max_satiety,
+			"level": state.level, "experience": state.experience,
+			"required_exp": _game.get_growth().required_exp(state.level),
+			"is_max_level": _game.get_growth().is_max_level(), "is_dead": state.is_dead,
+		}, true)
+	return snapshot
+
+
+func _publish_menu_state() -> void:
+	var state := get_menu_state()
+	if state != _last_menu_state:
+		_last_menu_state = state.duplicate()
+		menu_state_changed.emit(state.duplicate())
+
+
+func _action_result(status: String, message: String) -> Dictionary:
+	return {"status": status, "message": message, "state": get_menu_state()}
+
+
+func _do_feed() -> Dictionary:
 	var result := _interaction.handle_feed(_now())
 	if DEBUG_ACTIONS:
 		print("[Main] 喂食结果=", result)
 	_show_feedback(_feedback_text(result))
 	if result == GameManager.ActionResult.DONE:
 		_animation.play_action(AnimationController.ANIM_EAT_BREAD)
+	elif result == GameManager.ActionResult.WOKE_UP:
+		_animation.play_action(AnimationController.ANIM_STOP_SLEEP)
 	_refresh()
+	var status := "rejected"
+	if result == GameManager.ActionResult.DONE:
+		status = "success"
+	elif result == GameManager.ActionResult.WOKE_UP:
+		status = "woke_up"
+	return _action_result(status, _feedback_text(result))
 
 
-func _do_sleep() -> void:
+func _do_sleep() -> Dictionary:
 	var ok := _interaction.handle_sleep(_now())
 	if DEBUG_ACTIONS:
 		print("[Main] 睡眠结果=", ok)
@@ -129,9 +217,10 @@ func _do_sleep() -> void:
 	if ok:
 		_animation.play_action(AnimationController.ANIM_START_SLEEP)
 	_refresh()
+	return _action_result("success" if ok else "rejected", "已入睡" if ok else "无法入睡")
 
 
-func _do_wake() -> void:
+func _do_wake() -> Dictionary:
 	var ok := _interaction.handle_wake(_now())
 	if DEBUG_ACTIONS:
 		print("[Main] 唤醒结果=", ok)
@@ -139,6 +228,7 @@ func _do_wake() -> void:
 	if ok:
 		_animation.play_action(AnimationController.ANIM_STOP_SLEEP)
 	_refresh()
+	return _action_result("success" if ok else "rejected", "已唤醒" if ok else "未在睡眠")
 
 
 func _on_hover_changed(over: bool) -> void:
@@ -170,6 +260,7 @@ func _refresh() -> void:
 	if _displayed_level > 0 and state.level > _displayed_level:
 		_animation.play_action(AnimationController.ANIM_LEVEL_UP)
 	_displayed_level = state.level
+	_publish_menu_state()
 
 
 func _load_frames() -> SpriteFrames:
